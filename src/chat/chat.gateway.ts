@@ -26,6 +26,7 @@ import {BotService} from "../bot/bot.service"; // Exemple de service de bot
     },
     // Optionnel: spécifier un chemin ou namespace si nécessaire
     // namespace: '/chat',
+    maxHttpBufferSize: 25 * 1024 * 1024 // 25 Mo pour supporter les gros fichiers
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
 
@@ -118,6 +119,12 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 }
                 this.logger.log(`[SOCKET MAP] Après déconnexion, userId ${userId} sockets: ${Array.from(this.userSocketMap.get(userId) || [])}`);
             }
+        }
+        // If the user was an admin and in the admin-chatroom, emit updated list
+        // Correction : utiliser la bonne API pour vérifier la présence dans la room
+        const adminRoom = this.server.sockets.adapter.rooms.get('admin-chatroom');
+        if (adminRoom && adminRoom.has && adminRoom.has(client.id)) {
+            this.emitAdminRoomUsers();
         }
     }
 
@@ -305,27 +312,102 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         this.logger.log(`[SOCKET] Réponse du bot envoyée à ${sender.email || senderId} (sockets: ${senderSocketIds}) : ${botResponse}`);
     }
 
-    // Optionnel : Gérer les indicateurs de saisie
-    // Écoute l'événement 'typing' émis par le frontend lorsqu'un utilisateur commence ou arrête de taper
-    @SubscribeMessage('typing')
-    handleTyping(
-        @MessageBody() data: { roomId: string; isTyping: boolean },
+    // --- Chatroom Admin : écoute et diffusion des messages des admins ---
+    @SubscribeMessage('adminChatRoomMessage')
+    async handleAdminChatRoomMessage(
+        @MessageBody() data: { content: string },
         @ConnectedSocket() client: Socket & { data?: { user?: User } },
-    ): void {
+    ): Promise<void> {
         const user = client.data.user;
-        if (!user || !data || !data.roomId) return; // Ignore si non authentifié ou données incomplètes
-
-        this.logger.debug(`User ${user.id} is ${data.isTyping ? 'typing' : 'not typing'} in room ${data.roomId}`);
-
-        // Diffuser l'événement de saisie à TOUS les autres clients dans la même room.
-        // client.to(data.roomId) cible tous les sockets dans cette room SAUF l'expéditeur.
-        // C'est important pour éviter que l'utilisateur se voie lui-même "taper".
-        client.to(data.roomId).emit('userTyping', {
-            roomId: data.roomId,
-            userId: user.id, // Utilisez l'ID de l'utilisateur authentifié
-            userName: (user as any).name || user.id, // Utilisez le nom ou l'ID de l'utilisateur pour l'affichage côté client
-            isTyping: data.isTyping
+        if (!user || user.isAdmin !== true) {
+            this.logger.warn(`Tentative d'envoi dans le chatroom admin par un non-admin (${user?.email || 'inconnu'})`);
+            client.emit('error', { message: 'Seuls les administrateurs peuvent envoyer des messages dans ce chat.' });
+            return;
+        }
+        if (!data || !data.content || typeof data.content !== 'string' || !data.content.trim()) {
+            this.logger.warn(`[adminChatRoomMessage] Message vide ou invalide reçu du client ${client.id}`);
+            client.emit('error', { message: 'Message vide ou invalide.' });
+            return;
+        }
+        this.logger.log(`[adminChatRoomMessage] Message reçu de ${user.email || user.id} (${user.id}): ${data.content}`);
+        // Optionnel : sauvegarder le message en base si besoin
+        // await this.messagesService.saveAdminChatRoomMessage({ senderId: user.id, content: data.content, timestamp: new Date() });
+        // Diffuse à tous les membres de la room 'admin-chatroom'
+        this.server.to('admin-chatroom').emit('adminChatRoomMessage', {
+            from: {
+                id: user._id,
+                name: (user as any).username || '',
+                email: user.email || '',
+                profileUrl : user.profileUrl || '',
+                isGoogleAuth : user.isGoogleAuth || false,
+                isAdmin: user.isAdmin || false
+            },
+            content: data.content,
+            date: new Date().toISOString()
         });
+    }
+
+    // Permet à un admin de rejoindre la room admin-chatroom (à appeler côté front après vérif isAdmin)
+    @SubscribeMessage('joinAdminChatRoom')
+    handleJoinAdminChatRoom(
+        @ConnectedSocket() client: Socket & { data?: { user?: User } },
+    ) {
+        const user = client.data.user;
+        if (!user || user.isAdmin !== true) {
+            client.emit('error', { message: 'Seuls les administrateurs peuvent rejoindre ce chat.' });
+            return;
+        }
+        client.join('admin-chatroom');
+        this.logger.log(`${user.email || user._id} a rejoint la room admin-chatroom`);
+        // EXTRA LOGGING: List all socket IDs in the admin-chatroom after join
+        const adminRoom = this.server.sockets.adapter.rooms.get('admin-chatroom');
+        if (adminRoom) {
+            this.logger.log(`[ADMIN ROOM] Sockets in admin-chatroom after join: ${Array.from(adminRoom).join(', ')}`);
+        } else {
+            this.logger.warn('[ADMIN ROOM] admin-chatroom does not exist after join');
+        }
+        client.emit('adminChatRoomJoined'); // Confirmation côté front
+        this.emitAdminRoomUsers(); // MAJ présence admins
+    }
+
+    // --- ADMIN PRESENCE ---
+    // Émet la liste des admins connectés à la room admin-chatroom
+    private async emitAdminRoomUsers() {
+        // Récupère tous les sockets de la room admin-chatroom
+        const adminRoom = this.server.sockets.adapter.rooms.get('admin-chatroom');
+        if (!adminRoom) {
+            this.server.to('admin-chatroom').emit('adminRoomUsers', []);
+            return;
+        }
+        const adminSockets = Array.from(adminRoom);
+        const adminUsers = [];
+        for (const socketId of adminSockets) {
+            const socket = this.server.sockets.sockets.get(socketId);
+            const user = socket?.data?.user;
+            if (user && user.isAdmin === true) {
+                adminUsers.push({
+                    id: user._id,
+                    name: (user as any).username || '',
+                    email: user.email || '',
+                    profileUrl: user.profileUrl || '',
+                    isGoogleAuth: user.isGoogleAuth || false,
+                    isAdmin: user.isAdmin || false
+                });
+            }
+        }
+        this.server.to('admin-chatroom').emit('adminRoomUsers', adminUsers);
+    }
+
+    // Optionnel : gestion leave explicite de la room admin
+    @SubscribeMessage('leaveAdminChatRoom')
+    handleLeaveAdminChatRoom(
+        @ConnectedSocket() client: Socket & { data?: { user?: User } },
+    ) {
+        const user = client.data.user;
+        if (!user || user.isAdmin !== true) return;
+        client.leave('admin-chatroom');
+        this.logger.log(`${user.email || user._id} a quitté la room admin-chatroom`);
+        this.emitAdminRoomUsers();
     }
 
     // --- Autres méthodes selon les besoins (ex: gérer les utilisateurs en ligne) ---
@@ -367,5 +449,63 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         } else {
             this.logger.warn('[IDENTIFY] userId manquant dans identify');
         }
+    }
+
+    @SubscribeMessage('adminChatRoomFile')
+    async handleAdminChatRoomFile(
+        @MessageBody() data: { type: 'audio' | 'video' | 'file' | 'image'; content: string; filename: string; tempId?: string; size?: number },
+        @ConnectedSocket() client: Socket & { data?: { user?: User } },
+    ): Promise<void> {
+        const user = client.data.user;
+        if (!user || user.isAdmin !== true) {
+            this.logger.warn(`Tentative d'envoi de fichier dans le chatroom admin par un non-admin (${user?.email || 'inconnu'})`);
+            client.emit('error', { message: 'Seuls les administrateurs peuvent envoyer des fichiers dans ce chat.' });
+            return;
+        }
+        if (!data || !data.content || !data.type || !data.filename) {
+            this.logger.warn(`[adminChatRoomFile] Fichier ou données invalides reçues du client ${client.id}`);
+            client.emit('error', { message: 'Fichier ou données invalides.' });
+            return;
+        }
+
+        let fileContent = data.content;
+        let isCompressed = false;
+        let filename = data.filename;
+        // Compression uniquement pour les fichiers non médias
+        if (data.type === 'file') {
+            try {
+                const buffer = Buffer.from(data.content.split(',')[1] || data.content, 'base64');
+                const zlib = require('zlib');
+                const compressed = zlib.gzipSync(buffer);
+                fileContent = 'data:application/gzip;base64,' + compressed.toString('base64');
+                isCompressed = true;
+                filename = data.filename + '.gz';
+            } catch (err) {
+                this.logger.warn(`[adminChatRoomFile] Compression échouée pour ${data.filename}: ${err.message}`);
+                fileContent = data.content;
+                isCompressed = false;
+                filename = data.filename;
+            }
+        }
+        // Pour les vidéos, images, audio : ne rien modifier, mais transmettre la taille si possible
+        // (le frontend doit envoyer size dans data)
+
+        this.server.to('admin-chatroom').emit('adminChatRoomFile', {
+            from: {
+                id: user._id,
+                name: (user as any).username || '',
+                email: user.email || '',
+                profileUrl: user.profileUrl || '',
+                isGoogleAuth: user.isGoogleAuth || false,
+                isAdmin: user.isAdmin || false
+            },
+            type: data.type,
+            content: fileContent, // base64 ou base64 compressé
+            filename: filename,
+            date: new Date().toISOString(),
+            tempId: data.tempId,
+            isCompressed,
+            size: data.size || null // Ajout de la taille pour tous les types
+        });
     }
 }

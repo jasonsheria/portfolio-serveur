@@ -133,7 +133,8 @@ export class UsersService {
             profileUrl: profileUrl,
             verificationToken : createUserDto.verificationToken || null,
             isVerified: createUserDto.isVerified || false,
-            // ... Ajoutez ici d'autres champs si besoin
+            isGoogleAuth: createUserDto.isGoogleAuth === true, // <-- Correction ici
+            // ... autres champs
         });
 
         // 4. Sauvegarder la nouvelle instance du document dans la base de données MongoDB.

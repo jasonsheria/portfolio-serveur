@@ -19,7 +19,7 @@ async function bootstrap() {
     whitelist: true,
     transform: true,
   }));
-  const uploadsPath = path.join(__dirname, '..', '..', 'uploads/profile');
+  const uploadsPath = path.join(__dirname, '..', 'uploads/profile');
     app.useStaticAssets(uploadsPath, {
     prefix: '/uploads/profile', // Ce préfixe doit correspondre à celui utilisé dans pictureUrl
   });

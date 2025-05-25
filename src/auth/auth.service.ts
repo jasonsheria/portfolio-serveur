@@ -17,6 +17,9 @@ require('dotenv').config();
 import nodemailer from 'nodemailer'; // Importation de nodemailer
 import { OAuth2Client, TokenPayload } from 'google-auth-library'; // Importations Google
 import { ConfigService } from '@nestjs/config'; // Pour accéder aux variables d'env
+import * as fs from 'fs'; // Importer fs
+import * as path from 'path'; // Importer path
+import { v4 as uuidv4 } from 'uuid'; // Importer uuidv4
 
 // Interface pour la réponse utilisateur cohérente
 export interface AuthUserResponse {
@@ -69,17 +72,33 @@ export class AuthService {
     }
     let profileUrl = '';
     if (profileImage && profileImage.buffer) {
-      const fs = require('fs');
-      const path = require('path');
-      const ext = profileImage.originalname.split('.').pop();
-      const fileName = `profile_${Date.now()}.${ext}`;
-      const profileDir = path.join(__dirname, '../../..', 'portfolio', 'public', 'assets', 'profile');
-      if (!fs.existsSync(profileDir)) {
-        fs.mkdirSync(profileDir, { recursive: true });
+       try {
+        const ext = profileImage.originalname.split('.').pop();
+        const fileName = `profile_${Date.now()}_${uuidv4()}.${ext}`; // Utiliser UUID pour plus d'unicité
+        // Assurez-vous que ce chemin est correct par rapport à la racine de votre projet NestJS
+         const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'profile');
+        // --- Fin du chemin de sauvegarde ---
+        // Créer le répertoire s'il n'existe pas
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+          this.logger.log(`Répertoire de téléchargement créé: ${uploadDir}`);
+        }
+
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, profileImage.buffer);
+        this.logger.log(`Fichier image sauvegardé: ${filePath}`);
+
+        // --- URL publique alignée avec main.ts ---
+        // L'URL d'accès public doit correspondre au préfixe statique défini dans main.ts
+        profileUrl = `/uploads/profile/${fileName}`;
+        this.logger.log(`URL publique de l'image: ${profileUrl}`);
+        // --- Fin de l'URL publique ---
+
+      } catch (error) {
+        console.error('Erreur lors de la sauvegarde du fichier image:', error);
+        // Gérer l'erreur de sauvegarde de fichier si nécessaire
+        // Vous pourriez vouloir lancer une exception ou continuer sans image de profil
       }
-      const filePath = path.join(profileDir, fileName);
-      fs.writeFileSync(filePath, profileImage.buffer);
-      profileUrl = `/assets/profile/${fileName}`;
     }
     try {
       const hashedPassword = await this.hashPassword(password);
@@ -90,6 +109,7 @@ export class AuthService {
         isVerified,
         verificationToken,
         profileUrl,
+        isGoogleAuth: false, // <-- Ajout explicite du champ isGoogleAuth
         telephone, // <-- Ajout explicite du champ téléphone
       });
       if (verificationToken) {
@@ -171,6 +191,7 @@ export class AuthService {
     }
     const { email, name, picture } = payload;
     let user = await this.userService.findByEmail(email);
+    let isFirstGoogle = false;
     if (!user) {
       // Crée un nouvel utilisateur si inexistant
       user = await this.userService.create({
@@ -179,7 +200,9 @@ export class AuthService {
         password: await this.hashPassword(Date.now().toString()), // Mot de passe temporaire
         profileUrl: picture,
         isVerified: true,
+        isGoogleAuth: true, // Ajouté pour marquer la première connexion Google
       });
+      isFirstGoogle = true;
     }
     const jwtPayload = { email: user.email, sub: user._id };
     const accessToken = this.jwtService.sign(jwtPayload);

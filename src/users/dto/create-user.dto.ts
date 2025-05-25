@@ -52,4 +52,6 @@ export class CreateUserDto {
   isVerified?: boolean;
   @IsString()
   verificationToken?: string;
+  @IsBoolean()
+  isGoogleAuth: boolean;
 }

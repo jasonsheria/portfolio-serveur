@@ -15,7 +15,7 @@ export class PaymentController {
 
     @UseGuards(JwtAuthGuard)
     @Post('create')
-    async createPayment(@Body() createPaymentDto: CreatePaymentDto) {
+    async createPayment(@Body() createPaymentDto : any) {
         return this.paymentService.processPayment(createPaymentDto);
     }
 

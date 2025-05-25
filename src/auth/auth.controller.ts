@@ -29,7 +29,7 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('profileImage'))
   @HttpCode(HttpStatus.CREATED) // Réponse 201 Created
   async register(
-    @Body() registerDto: RegisterDto,
+    @Body() registerDto: any,
     @UploadedFile() profileImage: any // Utilise 'any' pour éviter l'erreur de type
   ) {
     console.log('CONTROLLER: profileImage reçu:', !!profileImage, profileImage ? profileImage.originalname : null, '| Taille:', profileImage ? profileImage.size : null);
