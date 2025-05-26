@@ -10,5 +10,6 @@ import { User, UserSchema } from '../entity/users/user.schema';
   imports :[UsersModule, AuthModule, MongooseModule.forFeature([{ name: Payment.name, schema: PaymentSchema }, { name: User.name, schema: UserSchema }])],
   controllers: [PaymentController],
   providers: [PaymentService],
+  exports: [PaymentService]
 })
 export class PaymentModule {}

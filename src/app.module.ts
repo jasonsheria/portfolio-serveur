@@ -16,6 +16,8 @@ import { GatewayModule } from './chat/gateway.module';
 import { BotModule } from './bot/bot.module';
 import { PaymentModule } from './payment/payment.module';
 
+import { SiteModule } from './site/site.module';
+
 @Module({
   imports: [
       // Charger le module de configuration en premier.
@@ -41,7 +43,9 @@ import { PaymentModule } from './payment/payment.module';
     UsersModule,
     GatewayModule,
     BotModule,
-    PaymentModule
+    PaymentModule,
+    SiteModule,
+    
 
 
   ],

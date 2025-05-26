@@ -2,6 +2,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, UserSchema } from '../entity/users/user.schema';
+import { Payment, PaymentSchema } from '../entity/payment/payment.schema';
 import { MongooseModule } from '@nestjs/mongoose'; // 1. Importer MongooseModule
 import { UsersController } from './users.controller';
 import { AuthModule } from '../auth/auth.module'; // Importer AuthModule ici
@@ -12,6 +13,7 @@ import { AuthModule } from '../auth/auth.module'; // Importer AuthModule ici
     //    forFeature() rend les modèles listés disponibles POUR L'INJECTION DANS CE MODULE.
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
+      { name: Payment.name, schema: PaymentSchema }, // Ajout du modèle Payment
       // Si d'autres modèles sont utilisés dans ce module, ajoutez-les ici aussi :
       // { name: AnotherEntity.name, schema: AnotherEntitySchema },
     ]),

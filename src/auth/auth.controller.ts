@@ -1,5 +1,5 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, Get, UnauthorizedException, Query, NotFoundException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, Get, UnauthorizedException, Query, NotFoundException, UseInterceptors, UploadedFile, Patch, UploadedFiles, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -11,7 +11,8 @@ import { Logger } from '@nestjs/common';
 import { ChatGateway } from '../chat/chat.gateway';
 import { createTransport } from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import { UpdateUserDto } from '../users/dto/update-user.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -114,16 +115,44 @@ export class AuthController {
   }
   // creer une fonction pour mettre en jour le user present dans userService
   @UseGuards(JwtAuthGuard)
-  @Post('api/update-profile')
+  @Patch('api/update-profile')
   @HttpCode(HttpStatus.OK)
-  async updateProfile(@Request() req, @Body() updateData: any) {
-    const userId = req.user.id; // Récupérer l'ID de l'utilisateur depuis le token JWT
-    this.logger.log(`Mise à jour du profil pour userId: ${userId}`);
-    const updatedUser = await this.userService.updateUser(userId, updateData);
-    if (!updatedUser) {
-      throw new UnauthorizedException('Utilisateur non trouvé ou mise à jour échouée');
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'profileImage1', maxCount: 1 },
+    { name: 'profileImage2', maxCount: 1 },
+    { name: 'profileImage3', maxCount: 1 },
+    { name: 'cvFile', maxCount: 1 },
+    { name: 'logoFile', maxCount: 1 },
+    { name: 'postalCardFile', maxCount: 1 },
+    { name: 'companyLogoFile', maxCount: 1 },
+  ]))
+  async updateProfile(
+    @Request() req,
+    @Body() updateUserDto: UpdateUserDto,
+    @UploadedFiles() files: {
+      profileImage1?: Express.Multer.File[],
+      profileImage2?: Express.Multer.File[],
+      profileImage3?: Express.Multer.File[],
+      cvFile?: Express.Multer.File[],
+      logoFile?: Express.Multer.File[],
+      postalCardFile?: Express.Multer.File[],
+      companyLogoFile?: Express.Multer.File[],
     }
-    return updatedUser;
+  ) {
+    this.logger.debug(`updateProfile: req.user = ${JSON.stringify(req.user)}`);
+    this.logger.debug(`Received request to update profile for user ID: ${req.user.userId}`);
+    
+
+    try {
+      const updatedUser = await this.userService.updateUser(req.user.userId, updateUserDto, files);
+      return { message: 'Profil mis à jour avec succès', user: updatedUser };
+    } catch (error) {
+      this.logger.error(`Profile update failed for user ID ${req.user.userId}: ${error.message}`, error.stack);
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
+        throw error; // Re-throw known exceptions
+      }
+      throw new InternalServerErrorException('Une erreur est survenue lors de la mise à jour du profil.');
+    }
   }
 
   @Post('api/resend-verification')

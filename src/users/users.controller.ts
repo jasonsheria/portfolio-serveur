@@ -1,9 +1,11 @@
-import { Controller, Put, Body, Param, UseGuards, UploadedFile, UseInterceptors, Req, BadRequestException, Delete } from '@nestjs/common';
+import { Controller, Put, Body, Param, UseGuards, UploadedFile, UseInterceptors, Req, BadRequestException, Delete, Get, Patch } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Express } from 'express';
 import { AuthService } from '../auth/auth.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { CurrentUser } from './current-user.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -54,5 +56,42 @@ export class UsersController {
     // Suppression de l'utilisateur et de ses données liées
     await this.usersService.deleteUserAndRelatedData(user._id.toString());
     return { message: 'Compte supprimé avec succès.' };
+  }
+
+  // --- ADMIN CRUD ---
+  @UseGuards(JwtAuthGuard)
+  @Get('admins')
+  async getAllAdmins() {
+    return this.usersService.findAllAdmins();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('admins/:id')
+  async getAdminById(@Param('id') id: string) {
+    return this.usersService.findAdminById(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('admins/:id')
+  async updateAdmin(@Param('id') id: string, @Body() updateUserDto: any) {
+    return this.usersService.updateAdmin(id, updateUserDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('admins/:id')
+  async deleteAdmin(
+    @Param('id') id: string,
+    @Body('password') password: string,
+    @CurrentUser() user: any
+  ) {
+    if (!password) {
+      return { message:'Le mot de passe de confirmation est requis.' };
+    }
+    const currentAdminId = user && (user._id || user.id || user.userId || user.sub);
+    if (!currentAdminId) {
+      return { message:'Administrateur authentifié introuvable.' };
+    }
+    await this.usersService.deleteAdmin(id, password, currentAdminId);
+    return { message: 'Administrateur supprimé avec succès.' };
   }
 }

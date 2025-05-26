@@ -19,12 +19,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any): Promise<Partial<User>> { // Le type de retour peut être plus générique si besoin
-    // authService.validateUser gère maintenant les payloads temporaires et standards
-    const user = await this.authService.validateUser(payload);
-    if (!user) {
-      throw new UnauthorizedException('Token invalide ou utilisateur non trouvé.');
+  async validate(payload: any): Promise<Partial<User>> {
+    // Always return an object with userId for downstream use
+    const userId = payload?.sub || payload?.id || payload?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Token payload missing user identifier.');
     }
-    return user; // Attache l'objet utilisateur (de la DB ou virtuel) à req.user
+    // Optionally, you can fetch the user from DB if needed, but always return userId
+    // const user = await this.authService.validateUser(payload);
+    // if (!user) {
+    //   throw new UnauthorizedException('Token invalide ou utilisateur non trouvé.');
+    // }
+    return { userId, ...payload };
   }
 }

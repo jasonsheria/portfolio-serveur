@@ -15,44 +15,116 @@ export class User extends Document {
 
   @Prop({ required: false, default: '' })
   profileUrl: string; // Utilisé pour la photo de profil Google
+
   @Prop({ required: false, default: null })
-  telephone: string | null; // Téléphone optionnel
+  secondName?: string; // Ajouté
+
+  @Prop({ required: false, default: null })
+  telephone: string | null;
+
+  @Prop({ required: false, default: null }) // Ajouté
+  dateOfBirth?: string | null; // Ajouté
+
   @Prop({ required: false, default: '' })
-  logo : string; // Logo optionnel
+  logo : string; 
+
   @Prop({ required: false, default: '' })
-  address: string; // Adresse optionnelle
+  address: string; 
+  
   @Prop({ required: false, default: '' })
-  city: string; // Ville optionnelle
+  city: string; 
+  
   @Prop({ required: false, default: '' })
-  country: string; // Pays optionnel
+  country: string; 
+  
   @Prop({ required: false, default: '' })
-  postalCode: string; // Code postal optionnel
+  postalCode: string; // Conserver si utilisé, sinon commenter/supprimer
+  
   @Prop({ required: false, default: '' })
-  description: string; // Description optionnelle
+  description: string; 
+
+  @Prop({ required: false, default: '' }) // Ajouté - experience
+  experience?: string;
+
   @Prop({ required: false, default: '' })
-  website: string; // Site web optionnel
+  website: string; 
+
+  // socialMedia: string; // Remplacé par des champs spécifiques ci-dessous
+
+  @Prop({ required: false, default: '' }) // Ajouté - languesParlees
+  languesParlees?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - sport
+  sport?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - objectifs
+  objectifs?: string;
+
   @Prop({ required: false, default: '' })
-  socialMedia: string; // Réseaux sociaux optionnels
+  companyName: string; 
+  
   @Prop({ required: false, default: '' })
-  companyName: string; // Nom de l'entreprise optionnel
+  companyDescription: string; 
+  
   @Prop({ required: false, default: '' })
-  companyDescription: string; // Description de l'entreprise optionnelle
+  companyWebsite: string; 
+  
   @Prop({ required: false, default: '' })
-  companyWebsite: string; // Site web de l'entreprise optionnel
+  companyLogo: string; 
+  
   @Prop({ required: false, default: '' })
-  companyLogo: string; // Logo de l'entreprise optionnel
+  companyAddress: string; // Renommé depuis companyAdresse pour cohérence
+  
   @Prop({ required: false, default: '' })
-  companyAddress: string; // Adresse de l'entreprise optionnelle
+  companyPhone: string; 
+  
   @Prop({ required: false, default: '' })
-  companyPhone: string; // Téléphone de l'entreprise optionnel
+  companyEmail: string; 
+  
+  // companySocialMedia: string; // Remplacé par des champs spécifiques si nécessaire, sinon commenter/supprimer
+
+  @Prop({ required: false, default: '' }) // Ajouté - linkedin
+  linkedin?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - github
+  github?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - facebook
+  facebook?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - whatsapp
+  whatsapp?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - instagram
+  instagram?: string;
+
   @Prop({ required: false, default: '' })
-  companyEmail: string; // Email de l'entreprise optionnel
+  domaine: string; 
+  
   @Prop({ required: false, default: '' })
-  companySocialMedia: string; // Réseaux sociaux de l'entreprise optionnels
-  @Prop({ required: false, default: '' })
-  domaine: string; // Domaine optionnel
-  @Prop({ required: false, default: '' })
-  expertise : string; // Expertise optionnelle
+  expertise : string; 
+
+  @Prop({ required: false, default: '' }) // Ajouté - profileImage1
+  profileImage1?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - profileImage2
+  profileImage2?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - profileImage3
+  profileImage3?: string;
+
+  @Prop({ required: false, default: '' }) // Ajouté - cvFile
+  cvFile?: string;
+
+  // logoFile est déjà couvert par `logo` plus haut, si c'est le même. Sinon, clarifier.
+  // Si `logo` est pour le logo personnel et `companyLogo` pour l'entreprise, c'est bon.
+  // Si `logoFile` est un autre fichier, il faut l'ajouter.
+
+  @Prop({ required: false, default: '' }) // Ajouté - postalCardFile
+  postalCardFile?: string;
+
+  // companyLogoFile est déjà couvert par `companyLogo` plus haut.
+
   @Prop({ default: false })
   isVerified: boolean;
 
