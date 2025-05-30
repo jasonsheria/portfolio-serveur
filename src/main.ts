@@ -19,9 +19,10 @@ async function bootstrap() {
     whitelist: true,
     transform: true,
   }));
-  const uploadsPath = path.join(__dirname, '..', 'uploads/profile');
+  const uploadsPath = path.join(__dirname, '..', 'uploads');
     app.useStaticAssets(uploadsPath, {
-    prefix: '/uploads/profile', // Ce préfixe doit correspondre à celui utilisé dans pictureUrl
+    prefix: '/uploads', // Ce préfixe doit correspondre à celui utilisé dans pictureUrl
+    fallthrough: false, // Pour que les erreurs soient catchées ici
   });
   // **ACTIVER L'ADAPTATEUR SOCKET.IO**
   // Cette ligne lie l'adaptateur Socket.IO à votre application NestJS

@@ -17,6 +17,7 @@ import { BotModule } from './bot/bot.module';
 import { PaymentModule } from './payment/payment.module';
 
 import { SiteModule } from './site/site.module';
+import { MessageForumModule } from './messages/message_forum.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { SiteModule } from './site/site.module';
     BotModule,
     PaymentModule,
     SiteModule,
+    MessageForumModule,
     
 
 

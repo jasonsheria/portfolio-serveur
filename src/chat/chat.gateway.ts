@@ -16,7 +16,9 @@ import { MessagesService } from '../messages/messages.service';
 import { User } from '../entity/users/user.schema'; // Exemple d'entité utilisateur
 import { Message } from '../entity/messages/message.schema'; // Exemple d'entité message
 import { UsersService } from '../users/users.service';
-import {BotService} from "../bot/bot.service"; // Exemple de service de bot
+import { BotService } from "../bot/bot.service"; // Exemple de service de bot
+import { MessageForum } from '../entity/messages/message_forum.schema';
+import { MessageForumService } from '../messages/message_forum.service';
 // Le port doit correspondre à celui où Socket.IO écoute sur votre backend
 // (souvent le même port que l'API REST si vous utilisez l'adaptateur par défaut)
 @WebSocketGateway({
@@ -42,6 +44,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         private readonly authService: AuthService, // Service pour l'authentification
         private readonly usersService: UsersService, // Service pour la gestion des utilisateurs
         private readonly messagesService: MessagesService, // Service pour la gestion des messages et conversations
+        private readonly messageForumService: MessageForumService, // Service pour la gestion des messages forum
     ) { }
 
     // --- Cycle de vie de la Gateway ---
@@ -315,7 +318,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     // --- Chatroom Admin : écoute et diffusion des messages des admins ---
     @SubscribeMessage('adminChatRoomMessage')
     async handleAdminChatRoomMessage(
-        @MessageBody() data: { content: string },
+        @MessageBody() data: { content: string; tempId?: string },
         @ConnectedSocket() client: Socket & { data?: { user?: User } },
     ): Promise<void> {
         const user = client.data.user;
@@ -329,27 +332,31 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             client.emit('error', { message: 'Message vide ou invalide.' });
             return;
         }
-        this.logger.log(`[adminChatRoomMessage] Message reçu de ${user.email || user.id} (${user.id}): ${data.content}`);
-        // Optionnel : sauvegarder le message en base si besoin
-        // await this.messagesService.saveAdminChatRoomMessage({ senderId: user.id, content: data.content, timestamp: new Date() });
-        // Diffuse à tous les membres de la room 'admin-chatroom'
+        const messagesave = {
+            user: user._id,
+            content: data.content,
+            type: "text",
+            date: new Date(),
+        };
+        const saved = await this.messageForumService.createMessage(messagesave);
         this.server.to('admin-chatroom').emit('adminChatRoomMessage', {
             from: {
                 id: user._id,
                 name: (user as any).username || '',
                 email: user.email || '',
-                profileUrl : user.profileUrl || '',
-                isGoogleAuth : user.isGoogleAuth || false,
+                profileUrl: user.profileUrl || '',
+                isGoogleAuth: user.isGoogleAuth || false,
                 isAdmin: user.isAdmin || false
             },
             content: data.content,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            tempId: data.tempId || null // Ajout du tempId pour l'optimistic UI
         });
     }
 
     // Permet à un admin de rejoindre la room admin-chatroom (à appeler côté front après vérif isAdmin)
     @SubscribeMessage('joinAdminChatRoom')
-    handleJoinAdminChatRoom(
+    async handleJoinAdminChatRoom(
         @ConnectedSocket() client: Socket & { data?: { user?: User } },
     ) {
         const user = client.data.user;
@@ -368,6 +375,9 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
         client.emit('adminChatRoomJoined'); // Confirmation côté front
         this.emitAdminRoomUsers(); // MAJ présence admins
+        // --- NOUVEAU : Récupérer et envoyer l'historique des messages admin ---
+        // Supposons que vous stockez les messages admin dans la même collection que le forum mais avec un flag/type
+
     }
 
     // --- ADMIN PRESENCE ---
@@ -430,7 +440,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     @SubscribeMessage('identify')
-    handleIdentify(
+   async handleIdentify(
         @MessageBody() data: { userId: string },
         @ConnectedSocket() client: Socket
     ) {
@@ -446,6 +456,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             this.userSocketMap.get(data.userId)!.add(client.id);
             this.logger.log(`[IDENTIFY] Mapping userId ${data.userId} -> socketId ${client.id}`);
             this.logger.log(`[SOCKET MAP] userId ${data.userId} sockets: ${Array.from(this.userSocketMap.get(data.userId)!)}`);
+            const adminMessages = await this.messageForumService.getAllMessages();
+            client.emit('adminChatRoomMessages', adminMessages);
         } else {
             this.logger.warn('[IDENTIFY] userId manquant dans identify');
         }
@@ -489,7 +501,40 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
         // Pour les vidéos, images, audio : ne rien modifier, mais transmettre la taille si possible
         // (le frontend doit envoyer size dans data)
-
+        // sauverager le fichier dans uploads/admin-chatroom/
+        const fs = require('fs');
+        const path = require('path');
+        const uploadDir = path.join(process.cwd(), 'uploads','profile');
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        const ext = filename.split('.').pop();
+        const newName = `${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+        const filePathAbs = path.join(uploadDir, newName);
+        try {
+            // Décoder le base64 et sauvegarder le fichier
+            let base64 = fileContent;
+            if (base64.startsWith('data:')) base64 = base64.split(',')[1];
+            fs.writeFileSync(filePathAbs, Buffer.from(base64, 'base64'));
+            console.log(`[ADMIN CHATROOM] Fichier sauvegardé: ${filePathAbs}`);
+            // sauvegarder le chemin relatif pour l'envoyer au frontend
+            fileContent = `/uploads/profile/${newName}`; // chemin relatif
+            // On peut aussi envoyer le chemin complet si nécessaire
+            console.log(`[ADMIN CHATROOM] Fichier sauvegardé: ${filePathAbs}`);
+            // Optionnel : sauvegarder le message en base de données si nécessaire
+            await this.messageForumService.createMessage({
+                user: user._id,
+                content: fileContent, // chemin relatif ou absolu
+                type: data.type,
+                filename: filename,
+                date: new Date(),
+                isCompressed: isCompressed || false, // Indique si le fichier est compressé
+                size: data.size || null // Ajout de la taille pour tous les types
+            });
+        } catch (err) {
+            console.log(`[ADMIN CHATROOM] Erreur lors de l'écriture du fichier admin chatroom: ${err.message}`);
+            client.emit('error', { message: "Erreur lors de l'enregistrement du fichier dans le chat admin." });
+            return;
+        }
+        // Diffuser à tous les membres de la room 'admin-chatroom'
         this.server.to('admin-chatroom').emit('adminChatRoomFile', {
             from: {
                 id: user._id,
@@ -503,9 +548,95 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             content: fileContent, // base64 ou base64 compressé
             filename: filename,
             date: new Date().toISOString(),
-            tempId: data.tempId,
+            tempId: data.tempId || null, // Ajout du tempId pour lier l'optimistic UI
             isCompressed,
             size: data.size || null // Ajout de la taille pour tous les types
+        });
+    }
+
+    // --- Forum Public ---
+    @SubscribeMessage('forumMessage')
+    async handleForumMessage(
+        @MessageBody() data: { content: string; type: string; filename?: string },
+        @ConnectedSocket() client: Socket & { data?: { user?: User } },
+    ): Promise<void> {
+        const user = client.data.user;
+        if (!user) {
+            client.emit('error', { message: 'Authentification requise pour le forum.' });
+            return;
+        }
+        if (!data || !data.content || !data.type) {
+            client.emit('error', { message: 'Message forum incomplet.' });
+            return;
+        }
+        let saved;
+        let filePath = null;
+        let fileType = data.type;
+        // Si c'est un fichier (image, video, audio, file)
+        if (["image", "video", "audio", "file"].includes(data.type) && data.filename) {
+            // Décoder le base64 et sauvegarder le fichier dans public/uploads/forum/
+            const fs = require('fs');
+            const path = require('path');
+            const uploadDir = path.join(process.cwd(), '..', '..', 'uploads', 'forum');
+            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+            const ext = data.filename.split('.').pop();
+            const newName = `${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+            const filePathAbs = path.join(uploadDir, newName);
+            let base64 = data.content;
+            if (base64.startsWith('data:')) base64 = base64.split(',')[1];
+            try {
+                fs.writeFileSync(filePathAbs, Buffer.from(base64, 'base64'));
+                filePath = `/uploads/forum/${newName}`;
+                console.log(`[FORUM] Fichier sauvegardé: ${filePathAbs}`);
+            } catch (err) {
+                console.log(`[FORUM] Erreur lors de l'écriture du fichier forum: ${err.message}`);
+                client.emit('error', { message: "Erreur lors de l'enregistrement du fichier forum." });
+                return;
+            }
+            try {
+                saved = await this.messageForumService.createMessage({
+                    user: user._id,
+                    content: filePath, // chemin relatif
+                    type: fileType,
+                    date: new Date(),
+                });
+                console.log(`[FORUM] Message forum fichier enregistré en base: ${JSON.stringify(saved)}`);
+            } catch (err) {
+                console.log(`[FORUM] Erreur lors de l'enregistrement du message forum en base: ${err.message}`);
+                client.emit('error', { message: "Erreur lors de l'enregistrement du message forum en base." });
+                return;
+            }
+        } else {
+            // Message texte classique
+            console.log("le message forum est un texte", data.content);
+            try {
+                saved = await this.messageForumService.createMessage({
+                    user: user._id,
+                    content: data.content,
+                    type: "text",
+                    date: new Date(),
+                });
+                client.emit('error', { message: "Erreur lors de l'enregistrement du message forum en base." });
+                return;
+            }
+            catch (err) {
+                client.emit('error', { message: "Erreur lors de l'enregistrement du message forum en base." });
+                return;
+            }
+
+        }
+        // Diffuser à tous les connectés au forum
+        this.server.emit('forumMessage', {
+            from: {
+                id: user._id,
+                name: (user as any).username || '',
+                email: user.email || '',
+                profileUrl: user.profileUrl || '',
+            },
+            content: filePath ? filePath : data.content,
+            type: data.type,
+            filename: data.filename || null,
+            date: saved.date,
         });
     }
 }
