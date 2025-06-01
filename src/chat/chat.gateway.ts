@@ -639,4 +639,24 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             date: saved.date,
         });
     }
+
+    // --- Pagination des messages admin ---
+    @SubscribeMessage('getOlderAdminMessages')
+    async handleGetOlderAdminMessages(
+        @MessageBody() data: { before?: string, limit?: number },
+        @ConnectedSocket() client: Socket & { data?: { user?: User } },
+    ) {
+        const user = client.data.user;
+        if (!user || user.isAdmin !== true) {
+            client.emit('error', { message: 'Seuls les administrateurs peuvent charger les anciens messages.' });
+            return;
+        }
+        let beforeDate: Date | undefined = undefined;
+        if (data && data.before) {
+            beforeDate = new Date(data.before);
+        }
+        const limit = data && data.limit ? Math.min(data.limit, 30) : 15;
+        const messages = await this.messageForumService.getMessagesPaginated({ before: beforeDate, limit });
+        client.emit('olderAdminMessages', messages);
+    }
 }
