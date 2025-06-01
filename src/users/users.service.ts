@@ -18,6 +18,7 @@ import * as fs from 'fs'; // Import fs
 import * as path from 'path'; // Import path
 import { Payment } from '../entity/payment/payment.schema';
 import * as bcrypt from 'bcrypt';
+import type { Express } from 'express';
 
 @Injectable()
 export class UsersService {

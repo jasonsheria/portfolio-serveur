@@ -13,6 +13,8 @@ import { createTransport } from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
+import type { Express } from 'express';
+
 
 @Controller('auth')
 export class AuthController {
@@ -84,7 +86,7 @@ export class AuthController {
   @UseGuards(NoExistingSessionGuard) // Appliquer le garde ici
   @Post('api/google/login') // Nouvelle route
   @HttpCode(HttpStatus.OK)
-  async googleLogin(@Body() googleLoginDto: GoogleLoginDto) {
+  async googleLogin(@Body() googleLoginDto: GoogleLoginDto){
     this.logger.log(`Tentative de connexion Google pour le token : ${googleLoginDto.token.substring(0, 20)}...`);
     try {
       const result = await this.authService.loginWithGoogle(googleLoginDto.token);
