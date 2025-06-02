@@ -7,7 +7,7 @@ import { UsersModule } from '../users/users.module'; // Importer le module des u
 // ou tout autre module pertinent
 import { MongooseModule } from '@nestjs/mongoose';
 import { Message, MessageSchema } from '../entity/messages/message.schema';
-import { User, UserSchema } from '../entity/Users/user.schema';
+import { User, UserSchema } from '../entity/users/user.schema';
 import { BotModule } from '../bot/bot.module'; // Importer le module Bot si MessagesService utilise des services de bot
 @Module({
   imports: [
