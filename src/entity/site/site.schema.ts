@@ -21,7 +21,14 @@ export class Site extends Document {
   @Prop() googleAnalyticsKey?: string;
   @Prop() siteLanguage?: string;
   @Prop() monSite?: string;
-
+  @Prop({ required: true })
+  siteName: string;
+  @Prop({ required: true })
+  siteType: string;
+  @Prop() notifications?: boolean;
+  @Prop() isSecure?: boolean;
+  @Prop() isAuth?: boolean;
+  @Prop() hasBlog?: boolean;
 }
 
 export const SiteSchema = SchemaFactory.createForClass(Site);

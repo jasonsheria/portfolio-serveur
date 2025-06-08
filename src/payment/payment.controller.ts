@@ -15,7 +15,7 @@ export class PaymentController {
 
     @UseGuards(JwtAuthGuard)
     @Post('create')
-    async createPayment(@Body() createPaymentDto : any) {
+    async createPayment(@Body() createPaymentDto: any) {
         return this.paymentService.processPayment(createPaymentDto);
     }
 
@@ -26,8 +26,14 @@ export class PaymentController {
     }
 
     @Get()
-     @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard)
     async getAllPayments() {
         return this.paymentService.getAllPayments();
+    }
+
+    @Get('by-site/:siteId')
+    @UseGuards(JwtAuthGuard)
+    async getPaymentBySite(@Param('siteId') siteId: string) {
+        return await this.paymentService.getPaymentBySite(siteId);
     }
 }

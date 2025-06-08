@@ -18,6 +18,8 @@ import { PaymentModule } from './payment/payment.module';
 
 import { SiteModule } from './site/site.module';
 import { MessageForumModule } from './messages/message_forum.module';
+import { PostsModule } from './posts/posts.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -47,6 +49,8 @@ import { MessageForumModule } from './messages/message_forum.module';
     PaymentModule,
     SiteModule,
     MessageForumModule,
+    PostsModule,
+    CommentsModule,
     
 
 

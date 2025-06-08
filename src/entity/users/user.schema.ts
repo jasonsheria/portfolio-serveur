@@ -141,6 +141,15 @@ export class User extends Document {
   // Optionnel: Pour explicitement marquer les utilisateurs ayant utilisé Google pour se connecter
    @Prop({ default: false })
    isGoogleAuth: boolean;
+
+   @Prop({ required: false, default: null })
+  passwordResetCode?: string | null;
+
+  @Prop({ required: false, default: null })
+  passwordResetCodeExpires?: Date | null;
+
+  @Prop({ required: false, default: null })
+  passwordResetNewPassword?: string | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

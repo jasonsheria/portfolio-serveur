@@ -202,4 +202,28 @@ export class AuthController {
     // await this.userService.updateUser(user.id, { resetToken: null });
     return { message: "Mot de passe réinitialisé avec succès." };
   }
+
+  @Post('request-password-reset')
+  async requestPasswordReset(@Body('email') email: string, @Body('newPassword') newPassword: string) {
+    if (!email || !newPassword) {
+      throw new BadRequestException('Email et nouveau mot de passe requis.');
+    }
+    // LOG pour debug : afficher le nouveau mot de passe reçu
+    console.log('[DEBUG] Nouveau mot de passe reçu pour réinitialisation:', newPassword);
+    // Génère un code à 6 chiffres
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    await this.userService.setPasswordResetCode(email, code, expires, newPassword);
+    await this.authService.sendPasswordResetCodeEmail(email, code, expires);
+    return { message: 'Un code de confirmation a été envoyé à votre email.' };
+  }
+
+  @Post('validate-password-reset')
+  async validatePasswordReset(@Body('email') email: string, @Body('code') code: string) {
+    if (!email || !code) {
+      throw new BadRequestException('Email et code requis.');
+    }
+    await this.authService.validatePasswordResetCode(email, code);
+    return { message: 'Mot de passe réinitialisé avec succès.' };
+  }
 }

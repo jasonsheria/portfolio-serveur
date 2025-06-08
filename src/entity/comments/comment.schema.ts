@@ -14,6 +14,9 @@ export class Comment extends Document {
     // createdAt et updatedAt seront ajoutés par `timestamps: true` si vous l'activez
     @Prop({ default: Date.now })
     createdAt: Date;
+
+    @Prop({ type: Types.ObjectId, ref: 'Comment', default: null })
+    parentComment: Types.ObjectId | null;
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment);

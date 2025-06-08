@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, Get, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, UseInterceptors, UploadedFile, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
 import { SiteService } from './site.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -66,9 +66,26 @@ export class SiteController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async getMySite(@Request() req) {
+  async getMySites(@Request() req) {
     const user = req.user;
-    const site = await this.siteService.getSiteByUser((user as any)._id ? (user as any)._id : user.id);
-    return { site };
+    const userId = user.userId || user.sub || user._id || user.id;
+    const sites = await this.siteService.getSitesByUser(userId);
+    return { sites };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK) // Or HttpStatus.NO_CONTENT if you prefer
+  async deleteSite(@Param('id') siteId: string, @Request() req) {
+    const user = req.user;
+    const userId = user.userId || user.sub || user._id || user.id;
+
+    if (!userId) {
+        // This case should ideally be prevented by JwtAuthGuard
+        throw new Error('User ID not found in token'); 
+    }
+
+    const result = await this.siteService.deleteSite(siteId, userId);
+    return result; // { success: true, message: 'Site deleted successfully.' }
   }
 }

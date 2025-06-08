@@ -1,16 +1,16 @@
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { Types } from 'mongoose';
 import { User } from '../users/user.schema';
+import { Site } from '../site/site.schema';
 @Schema()
 export class Payment extends Document {
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     client : User;
-
+    @Prop({ type: Types.ObjectId, ref: 'Site', required: false })
+    site: Site;
     @Prop({ required: false })
     cardHolderName: string;
-
     @Prop({ required: false, unique: false })
     mobileNumber: string;
     @Prop({ required: false })

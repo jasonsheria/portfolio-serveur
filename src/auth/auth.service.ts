@@ -256,6 +256,53 @@ export class AuthService {
     this.logger.log(`[MOCK] Envoi d'email de réinitialisation à ${email} avec token: ${resetToken}`);
   }
 
+  // --- Envoi d'email avec code de confirmation pour réinitialisation de mot de passe ---
+  async sendPasswordResetCodeEmail(email: string, code: string, expires: Date): Promise<void> {
+    // Utilise nodemailer pour envoyer le code
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT, 10);
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const fromEmail = process.env.SMTP_FROM || smtpUser;
+    const transporter = createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    const mailOptions = {
+      from: smtpUser,
+      to: email,
+      subject: 'Code de confirmation pour réinitialisation du mot de passe',
+      html: `<h2>Réinitialisation du mot de passe</h2>
+        <p>Votre code de confirmation est : <b>${code}</b></p>
+        <p>Ce code expire le : ${expires.toLocaleString()}</p>
+        <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`
+    };
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (err) {
+      throw new InternalServerErrorException('Impossible d\'envoyer l\'email de code de confirmation.');
+    }
+  }
+
+  // --- Validation du code de réinitialisation de mot de passe ---
+  async validatePasswordResetCode(email: string, code: string): Promise<void> {
+    const user = await this.userService.findByEmail(email);
+    if (!user || !user.passwordResetCode || !user.passwordResetCodeExpires || !user.passwordResetNewPassword) {
+      throw new BadRequestException('Aucune demande de réinitialisation trouvée.');
+    }
+    if (user.passwordResetCode !== code) {
+      throw new BadRequestException('Code de confirmation invalide.');
+    }
+    if (user.passwordResetCodeExpires < new Date()) {
+      throw new BadRequestException('Code expiré.');
+    }
+    // Hache le nouveau mot de passe et applique
+    const hashed = await this.hashPassword(user.passwordResetNewPassword);
+    await this.userService.updatePasswordAndClearReset(email, hashed);
+  }
+
   // Validation du token pour WebSocket (utilisé par ChatGateway)
   async validateWebSocketConnection(token: string): Promise<User | null> {
     try {

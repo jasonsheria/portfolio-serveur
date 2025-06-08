@@ -460,4 +460,31 @@ export class UsersService {
         this.logger.debug(`Recherche d'un utilisateur avec le token de réinitialisation: ${token}`);
         return this.userModel.findOne({ resetToken: token }).exec();
     }        
+
+    async setPasswordResetCode(email: string, code: string, expires: Date, newPassword: string): Promise<void> {
+        await this.userModel.updateOne(
+          { email },
+          {
+            $set: {
+              passwordResetCode: code,
+              passwordResetCodeExpires: expires,
+              passwordResetNewPassword: newPassword,
+            },
+          }
+        );
+      }
+    
+      async updatePasswordAndClearReset(email: string, hashedPassword: string): Promise<void> {
+        await this.userModel.updateOne(
+          { email },
+          {
+            $set: { password: hashedPassword },
+            $unset: {
+              passwordResetCode: '',
+              passwordResetCodeExpires: '',
+              passwordResetNewPassword: '',
+            },
+          }
+        );
+      }
 }
