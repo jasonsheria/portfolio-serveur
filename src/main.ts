@@ -10,7 +10,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Configuration CORS pour permettre la connexion depuis votre frontend (HTML)
   app.enableCors({
-       origin: 'http://localhost:3000', // <-- Corrigé pour permettre credentials
+       origin: 'https://wise-technology.onrender.com', // <-- Corrigé pour permettre credentials
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
        credentials: true,
   });
