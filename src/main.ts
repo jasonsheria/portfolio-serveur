@@ -39,6 +39,7 @@ async function bootstrap() {
   // Définir le port d'écoute
   const PORT = process.env.PORT || 5000; // <-- Assurez-vous que c'est le port attendu par votre client
   await app.listen(PORT);
+  console.log('CORS ENABLED', process.env.NODE_ENV, process.env.PORT);
   // console.log(`Les fichiers statiques du dossier '${uploadsPath}' sont servis sous le préfixe '/uploads/'`);
   // console.log(`Application API REST/WebSocket running on: ${await app.getUrl()} on port ${PORT}`);
 }
