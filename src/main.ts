@@ -9,10 +9,18 @@ async function bootstrap() {
   // Spécifiez NestExpressApplication comme type pour l'application pour avoir accès à useStaticAssets
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Configuration CORS pour permettre la connexion depuis votre frontend (HTML)
+  // --- CORS complet pour API REST & WebSocket (localhost + prod) ---
   app.enableCors({
-        origin: ['http://127.0.0.1:5500', 'https://wise-technology.onrender.com'], // <-- Corrigé pour permettre credentials
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-       credentials: true,
+    origin: [
+      'http://127.0.0.1:5500',
+      'http://localhost:5500',
+      'https://wise-technology.onrender.com'
+    ],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   });
   // Utiliser ValidationPipe globalement
   app.useGlobalPipes(new ValidationPipe({
