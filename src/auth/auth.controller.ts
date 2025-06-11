@@ -98,6 +98,26 @@ export class AuthController {
     }
   }
 
+  @Post('api/google')
+  @HttpCode(HttpStatus.OK)
+  async googleLoginFromStatic(@Body('credential') credential: string) {
+    if (!credential) {
+      throw new BadRequestException('Token Google manquant');
+    }
+    this.logger.log(`[STATIC] Tentative de connexion Google pour le token : ${credential.substring(0, 20)}...`);
+    try {
+      const result = await this.authService.loginWithGoogle(credential);
+      this.logger.log(`[STATIC] Connexion Google réussie pour: ${result.user.email}`);
+      return {
+        token: result.accessToken,
+        user: result.user,
+      };
+    } catch (error) {
+      this.logger.error(`[STATIC] Échec de l'endpoint googleLogin: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
   @Post('api/logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Request() req) {
