@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Socket.IO Gateway Chat</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="js/recentBlogPosts.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            line-height: 1.5;
+        }
+        #status {
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        #messages {
+            width: 100%;
+            height: 300px;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-family: monospace;
+            white-space: pre-wrap; /* Préserve les sauts de ligne et les espaces */
+            word-wrap: break-word; /* Coupe les mots longs si nécessaire */
+            overflow-y: scroll;
+        }
+        .controls {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .controls label {
+            display: inline-block;
+            margin-right: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+         .controls input[type="text"] {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(50% - 130px); /* Ajustez si nécessaire */
+         }
+         .controls input[type="text"]#roomId {
+             width: 200px;
+         }
+
+        .controls button {
+            padding: 10px 15px;
+            margin-right: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+         .controls button:disabled {
+             background-color: #cccccc;
+             cursor: not-allowed;
+         }
+
+    </style>
+</head>
+<body>
+
+    <h1>Test Socket.IO Gateway</h1>
+
+    <div id="status">Statut : Connexion en cours...</div>
+
+    <div class="controls">
+        <p>
+            <label for="roomId">ID de la conversation (Room ID):</label>
+            <input type="text" id="roomId" value="some-default-room-id"> <button id="joinRoomBtn">Rejoindre la Room</button>
+            <button id="leaveRoomBtn">Quitter la Room</button>
+        </p>
+        <p>
+            <label for="messageContent">Message:</label>
+            <input type="text" id="messageContent">
+            <button id="sendMessageBtn">Envoyer Message</button>
+            <button id="typingBtn">Commencer à Taper</button>
+            <button id="stopTypingBtn">Arrêter de Taper</button>
+        </p>
+    </div>
+
+
+    <h2>Messages reçus :</h2>
+    <textarea id="messages" readonly></textarea>
+
+    <script>
+        // --- Références aux éléments HTML ---
+        const statusDiv = document.getElementById('status');
+        const messagesTextarea = document.getElementById('messages');
+        const roomIdInput = document.getElementById('roomId');
+        const messageContentInput = document.getElementById('messageContent');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const typingBtn = document.getElementById('typingBtn');
+        const stopTypingBtn = document.getElementById('stopTypingBtn');
+        const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+
+
+        // --- CONFIGURATION ---
+        const SERVER_URL = 'http://localhost:5000'; // <-- Adaptez cette URL si nécessaire (http ou https)
+        const AUTH_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imphc29uZ2FjaGFiYTFAZ21haWwuY29tIiwic3ViIjoiNjgxZjczMjJiNGI1ZGNiOGQ0NmM1OWQwIiwiaWF0IjoxNzQ2OTU2NTY5LCJleHAiOjE3NDY5NjAxNjl9.cUCfKEKeTsJqiS-wQTJtbAwRoPS-L6j6m9z7z6LDJiA';     // <-- REMPLACEZ PAR UN VRAI TOKEN JWT VALIDE
+
+
+        // Options de connexion pour Socket.IO
+        const socketOptions = {
+           auth: { token: AUTH_TOKEN }, // Envoyez le token pour l'authentification
+           // Si vous utilisez un namespace dans votre gateway (@WebSocketGateway({ namespace: '/chat' })), ajoutez-le ici :
+           // path: '/chat/', // Si votre serveur Socket.IO est sur le chemin /chat
+           // Ou le namespace peut aussi être ajouté directement dans l'URL : io('http://localhost:5000/chat', {...})
+           transports: ['websocket', 'polling'], // Force l'utilisation de WebSocket si possible, sinon fallback sur polling
+        };
+
+        // Connexion au serveur Socket.IO
+        // La fonction `io()` est disponible car nous avons inclus la librairie via le CDN
+        const socket = io(SERVER_URL, socketOptions);
+
+        // --- Écouteurs d'événements Socket.IO ---
+
+        // Géré lorsque la connexion WebSocket est établie avec succès
+        socket.on('connect', () => {
+            console.log('Connecté au serveur ! Socket ID:', socket.id);
+            statusDiv.textContent = `Statut : Connecté (ID: ${socket.id})`;
+            appendMessage('CONNECT', `Connecté au serveur (ID: ${socket.id})`);
+             // Activez les boutons d'action une fois connecté
+            joinRoomBtn.disabled = false;
+            sendMessageBtn.disabled = false;
+            typingBtn.disabled = false;
+            stopTypingBtn.disabled = false;
+            leaveRoomBtn.disabled = false;
+
+        });
+
+        // Géré si une erreur de connexion se produit (avant d'être connecté)
+        socket.on('connect_error', (err) => {
+            console.error('Erreur de connexion :', err.message);
+            console.error('Détails de l\'erreur :', err.data); // Utile si le backend envoie des détails (ex: erreur d'auth)
+            statusDiv.textContent = `Statut : Erreur de connexion - ${err.message}`;
+             appendMessage('CONNECT_ERROR', `Erreur: ${err.message} ${err.data ? 'Détails: ' + JSON.stringify(err.data) : ''}`);
+              // Désactivez les boutons si la connexion échoue
+             joinRoomBtn.disabled = true;
+            sendMessageBtn.disabled = true;
+            typingBtn.disabled = true;
+            stopTypingBtn.disabled = true;
+            leaveRoomBtn.disabled = true;
+        });
+
+        // Géré lorsque la connexion est perdue
+         socket.on('disconnect', (reason) => {
+            console.log('Déconnecté :', reason);
+            statusDiv.textContent = `Statut : Déconnecté - ${reason}`;
+            appendMessage('DISCONNECT', `Déconnecté: ${reason}`);
+             // Désactivez les boutons lorsque déconnecté
+             joinRoomBtn.disabled = true;
+            sendMessageBtn.disabled = true;
+            typingBtn.disabled = true;
+            stopTypingBtn.disabled = true;
+            leaveRoomBtn.disabled = true;
+        });
+
+        // Géré pour les erreurs émises explicitement par le serveur (ex: 'client.emit("error", ...)')
+        socket.on('error', (data) => {
+             console.error('Erreur reçue du serveur :', data);
+             appendMessage('SERVER_ERROR', JSON.stringify(data));
+        });
+
+
+        // --- Événements spécifiques à la gateway de chat (@SubscribeMessage côté backend) ---
+
+        // Écoute l'événement 'messageHistory' (envoyé par handleJoinRoom)
+        socket.on('messageHistory', (history) => {
+             console.log('Historique des messages reçu :', history);
+             appendMessage('MESSAGE_HISTORY', JSON.stringify(history, null, 2)); // Pretty print JSON
+        });
+
+        // Écoute l'événement 'newMessage' (envoyé par handleMessage)
+        socket.on('newMessage', (message) => {
+             console.log('Nouveau message reçu :', message);
+             // Afficher le contenu du message reçu
+             appendMessage('NEW_MESSAGE', JSON.stringify(message));
+        });
+
+        // Écoute l'événement 'userTyping' (envoyé par handleTyping)
+         socket.on('userTyping', (data) => {
+            console.log('Événement userTyping reçu :', data);
+            // Vous pourriez afficher un indicateur de saisie basé sur data.userId et data.isTyping
+            appendMessage('USER_TYPING', JSON.stringify(data));
+        });
+
+        // Écoute un événement optionnel pour indiquer qu'un utilisateur a rejoint (si implémenté)
+        socket.on('userJoined', (data) => {
+            console.log('Événement userJoined reçu :', data);
+            appendMessage('USER_JOINED', JSON.stringify(data));
+        });
+
+         // Écoute un événement optionnel pour indiquer qu'un utilisateur a quitté (si implémenté)
+        socket.on('userLeft', (data) => {
+            console.log('Événement userLeft reçu :', data);
+            appendMessage('USER_LEFT', JSON.stringify(data));
+        });
+
+
+        // --- Helper pour ajouter des messages à la zone de texte ---
+        function appendMessage(type, content) {
+            const now = new Date().toLocaleTimeString();
+            messagesTextarea.value += `[${now}] [${type}] ${content}\n---\n`;
+            messagesTextarea.scrollTop = messagesTextarea.scrollHeight; // Auto-scroll
+        }
+
+        // --- Émetteurs d'événements (Actions utilisateur mappées aux @SubscribeMessage du backend) ---
+
+        // Émet l'événement 'joinRoom'
+        joinRoomBtn.addEventListener('click', () => {
+            const roomId = roomIdInput.value.trim(); // trim() pour enlever les espaces inutiles
+            if (socket.connected && roomId) {
+                console.log('Émission de "joinRoom" pour la room:', roomId);
+                socket.emit('joinRoom', { roomId: roomId });
+                 appendMessage('EMIT', `joinRoom { roomId: "${roomId}" }`);
+            } else {
+                 console.warn('Socket non connecté ou Room ID manquant pour joinRoom');
+                 statusDiv.textContent = 'Statut : Non connecté ou Room ID manquant';
+            }
+        });
+
+        // Émet l'événement 'sendMessage'
+        sendMessageBtn.addEventListener('click', () => {
+             const roomId = roomIdInput.value.trim();
+             const content = messageContentInput.value; // Laissez le contenu tel quel, même vide s'il est autorisé
+             if (socket.connected && roomId) { // Vérifiez si le contenu est obligatoire selon votre backend
+                 console.log('Émission de "sendMessage" pour la room:', roomId, 'Contenu:', content);
+                 socket.emit('sendMessage', { roomId: roomId, content: content });
+                 appendMessage('EMIT', `sendMessage { roomId: "${roomId}", content: "${content}" }`);
+                 messageContentInput.value = ''; // Efface l'input après envoi
+             } else {
+                  console.warn('Socket non connecté, Room ID manquant pour sendMessage');
+                 statusDiv.textContent = 'Statut : Non connecté ou Room ID manquant';
+             }
+        });
+
+        // Émet l'événement 'typing' avec isTyping: true
+        typingBtn.addEventListener('click', () => {
+             const roomId = roomIdInput.value.trim();
+             if (socket.connected && roomId) {
+                  console.log('Émission de "typing" (true) pour la room:', roomId);
+                  socket.emit('typing', { roomId: roomId, isTyping: true });
+                  appendMessage('EMIT', `typing { roomId: "${roomId}", isTyping: true }`);
+             } else {
+                  console.warn('Socket non connecté ou Room ID manquant pour typing (true)');
+                  statusDiv.textContent = 'Statut : Non connecté ou Room ID manquant';
+             }
+        });
+
+        // Émet l'événement 'typing' avec isTyping: false
+         stopTypingBtn.addEventListener('click', () => {
+             const roomId = roomIdInput.value.trim();
+             if (socket.connected && roomId) {
+                  console.log('Émission de "typing" (false) pour la room:', roomId);
+                  socket.emit('typing', { roomId: roomId, isTyping: false });
+                   appendMessage('EMIT', `typing { roomId: "${roomId}", isTyping: false }`);
+             } else {
+                  console.warn('Socket non connecté ou Room ID manquant pour typing (false)');
+                  statusDiv.textContent = 'Statut : Non connecté ou Room ID manquant';
+             }
+        });
+
+        // Émet l'événement 'leaveRoom'
+         leaveRoomBtn.addEventListener('click', () => {
+             const roomId = roomIdInput.value.trim();
+             if (socket.connected && roomId) {
+                  console.log('Émission de "leaveRoom" pour la room:', roomId);
+                  socket.emit('leaveRoom', { roomId: roomId });
+                  appendMessage('EMIT', `leaveRoom { roomId: "${roomId}" }`);
+                  // Optionnel: effacer l'historique local après avoir quitté la room
+                  // messagesTextarea.value = '';
+             } else {
+                  console.warn('Socket non connecté ou Room ID manquant pour leaveRoom');
+                   statusDiv.textContent = 'Statut : Non connecté ou Room ID manquant';
+             }
+        });
+
+        // Initialisation: Désactivez les boutons tant que le socket n'est pas connecté
+        joinRoomBtn.disabled = true;
+        sendMessageBtn.disabled = true;
+        typingBtn.disabled = true;
+        stopTypingBtn.disabled = true;
+        leaveRoomBtn.disabled = true;
+
+
+    </script>
+
+</body>
+</html>
