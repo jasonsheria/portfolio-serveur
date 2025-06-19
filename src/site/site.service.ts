@@ -8,6 +8,8 @@ import { Post } from '../entity/posts/post.schema';
 import { Category } from '../entity/posts/category.schema'; // Import Category schema
 import { Tag } from '../entity/posts/tag.schema'; // Import Tag schema
 import { Template } from '../entity/template/template.schema'; // Import Template schema
+import { Portfolio } from '../entity/portfolio/portfolio.schema'; // Import Portfolio schema
+import { Message } from '../entity/messages/message.schema'; // Import Message schema
 import * as path from 'path';
 import * as fs from 'fs';
 import { OfferedService, OfferedServiceSchema } from '../entity/service/service.schema';
@@ -21,10 +23,9 @@ export class SiteService {
     @InjectModel(Post.name) private readonly postModel: Model<Post>,
     @InjectModel(Category.name) private readonly categoryModel: Model<Category>, // Inject CategoryModel
     @InjectModel(Tag.name) private readonly tagModel: Model<Tag>, // Inject TagModel
-    @InjectModel(Template.name) private readonly templateModel: Model<Template>,
-    @InjectModel('OfferedService') private readonly serviceModel: Model<OfferedService>,
-    @InjectModel('Portfolio') private readonly portfolioModel: Model<any>,
-    @InjectModel('Message') private readonly messageModel: Model<any>,
+    @InjectModel(Template.name) private readonly templateModel: Model<Template>,    @InjectModel('OfferedService') private readonly serviceModel: Model<OfferedService>,
+    @InjectModel(Portfolio.name) private readonly portfolioModel: Model<Portfolio>,
+    @InjectModel(Message.name) private readonly messageModel: Model<Message>,
     @InjectModel(User.name) private readonly userModel: Model<User>,
   ) { }
   async createOrUpdateSite(user: User, data: any): Promise<any> {
@@ -257,46 +258,50 @@ export class SiteService {
     }
 
     return { success: true, message: 'Site, associated posts, media, and orphaned categories/tags deleted successfully.' };
-  }
-
-  /**
-   * Récupère un site et toutes ses entités associées par nom de site
+  }  /**
+   * Récupère un site et toutes ses entités associées par ID de template
    * Retourne : site, template, user, posts, portfolio, messages liés aux posts
    */
-  async getSiteDetailsByName(siteName: string) {
-    // 1. Trouver le site par nom
-    const site = await this.siteModel.findOne({ siteName }).lean();
-    if (!site) throw new NotFoundException(`Site '${siteName}' introuvable.`);
-
-    // 2. Récupérer le user associé
+  async getSiteDetailsByName(templateId: string) {
+    // 1. Trouver le template par ID
+    const template = await this.templateModel.findById(templateId).lean();
+    if (!template) throw new NotFoundException(`Template avec l'ID '${templateId}' introuvable.`);
+    
+    // 2. Récupérer le site associé au template
+    const site = await this.siteModel.findById(template.site).lean();
+    if (!site) throw new NotFoundException(`Site associé au template '${templateId}' introuvable.`);
+      // 3. Récupérer le user associé au site
     const user = await this.userModel.findById(site.user).lean();
 
-    // 3. Récupérer le template associé au site
-    const template = await this.templateModel.findOne({ site: site._id }).lean();
-
     // 4. Récupérer les posts associés au site
-    const posts = await this.postModel.find({ site: site._id }).lean();
-
-    // 5. Récupérer le portfolio associé au site
-    let portfolio = null;
-    if (this.portfolioModel) {
-      portfolio = await this.portfolioModel.findOne({ site: site._id }).lean();
+    const posts = await this.postModel.find({ site: site._id }).lean();    // 5. Récupérer TOUS les portfolios associés au site
+    let portfolios = [];
+    try {
+      if (this.portfolioModel) {
+        // Convertir site._id en string pour éviter les problèmes d'ObjectId
+        const siteIdString = site._id.toString();
+        portfolios = await this.portfolioModel.find({ 
+          site: { $in: [site._id, siteIdString] } 
+        }).lean();
+      }
+    } catch (error) {
+      console.error('[ERROR] Erreur lors de la récupération des portfolios:', error);
     }
 
     // 6. Récupérer les messages associés aux posts du site
+    
     let messages = [];
     if (posts.length > 0 && this.messageModel) {
       const postIds = posts.map(p => p._id);
       messages = await this.messageModel.find({ post: { $in: postIds } }).lean();
     }
 
-    return {
-      site,
+    return {GlobalData: [      site,
       user,
       template,
       posts,
-      portfolio,
+      portfolios,
       messages,
-    };
+    ]};
   }
 }
