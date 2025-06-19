@@ -27,7 +27,8 @@ async function bootstrap() {
         'http://localhost:4200',
         'https://wise-technology.onrender.com',
         'https://wise-hosting.onrender.com',
-        'https://localhost:1000'
+        'https://localhost:1000',
+        'https://pierre-design.onrender.com'
       ];
       
       // En développement, être plus permissif
