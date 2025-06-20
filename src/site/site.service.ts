@@ -274,7 +274,34 @@ export class SiteService {
     const user = await this.userModel.findById(site.user).lean();
 
     // 4. Récupérer les posts associés au site
-    const posts = await this.postModel.find({ site: site._id }).lean();    // 5. Récupérer TOUS les portfolios associés au site
+    const postsWithMedia = await this.postModel.find({ site: site._id }).lean();    // 5. Récupérer TOUS les portfolios associés au site
+     // 1. Récupérer tous les IDs de médias
+    const mediaIds = postsWithMedia.reduce((acc, post) => {
+      if (post.media && post.media.length > 0) {
+        acc.push(...post.media.map(media => media.toString()));
+      }
+      return acc;
+    }, [] as string[]);
+
+    // 2. Récupérer tous les documents médias
+    let medias: any[] = [];
+    if (mediaIds.length > 0) {
+      medias = await this.mediaModel.find({ _id: { $in: mediaIds } }).lean();
+    }
+     // 3. Créer une map pour accès rapide par ID
+    const mediaMap = medias.reduce((acc, media) => {
+      acc[media._id.toString()] = media;
+      return acc;
+    }, {} as Record<string, any>);
+
+    // 4. Remplacer les IDs par les objets médias complets dans chaque post
+    const posts = postsWithMedia.map(post => ({
+      ...post,
+      media: Array.isArray(post.media)
+        ? post.media.map((id: any) => mediaMap[id.toString()]).filter(Boolean)
+        : [],
+    }));
+
     let portfolios = [];
     try {
       if (this.portfolioModel) {
