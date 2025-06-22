@@ -30,6 +30,7 @@ async function bootstrap() {
         'https://localhost:1000',
         'https://pierre-design.onrender.com',
         'http://127.0.1:5500:3000',
+        'https://my-portfolio-vitrine.onrender.com',
       ];
       
       // En développement, être plus permissif
