@@ -22,6 +22,7 @@ import { PostsModule } from './posts/posts.module';
 import { CommentsModule } from './comments/comments.module';
 import { PortfolioModule } from './portfolio/portfolio.module'; // Ajouté pour exposer les routes portfolio
 import { TemplateModule } from './template/template.module';
+import { SuggestionModule } from './suggestion';
 
 @Module({
   imports: [
@@ -55,9 +56,7 @@ import { TemplateModule } from './template/template.module';
     CommentsModule,
     PortfolioModule, // Ajouté ici pour activer les routes portfolio
     TemplateModule, // Ajouté pour activer les routes template
-    
-
-
+    SuggestionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
