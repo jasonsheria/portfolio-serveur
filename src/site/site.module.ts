@@ -13,6 +13,7 @@ import { Template, TemplateSchema } from '../entity/template/template.schema'; /
 import { Portfolio, PortfolioSchema } from '../entity/portfolio/portfolio.schema'; // Import Portfolio schema
 import { Message, MessageSchema } from '../entity/messages/message.schema'; // Import Message schema
 import { User, UserSchema } from '../entity/users/user.schema'; // Import User schema
+import { Projet, ProjetSchema } from '../entity/projet/projet.schema'; // Import Project schema
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -26,6 +27,7 @@ import { User, UserSchema } from '../entity/users/user.schema'; // Import User s
       { name: Portfolio.name, schema: PortfolioSchema }, // Add PortfolioModel provider
       { name: Message.name, schema: MessageSchema }, // Add MessageModel provider
       { name: User.name, schema: UserSchema }, // Add UserModel provider
+      { name: Projet.name, schema: ProjetSchema }, // Add ProjectModel provider
     ]),
     UsersModule,
   ],

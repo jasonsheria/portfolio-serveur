@@ -9,7 +9,8 @@ import { Category } from '../entity/posts/category.schema'; // Import Category s
 import { Tag } from '../entity/posts/tag.schema'; // Import Tag schema
 import { Template } from '../entity/template/template.schema'; // Import Template schema
 import { Portfolio } from '../entity/portfolio/portfolio.schema'; // Import Portfolio schema
-import { Message } from '../entity/messages/message.schema'; // Import Message schema
+import { Message } from '../entity/messages/message.schema'; // Import Message 
+import { Projet } from '../entity/projet/projet.schema'; // Import Projet schema
 import * as path from 'path';
 import * as fs from 'fs';
 import { OfferedService, OfferedServiceSchema } from '../entity/service/service.schema';
@@ -27,6 +28,7 @@ export class SiteService {
     @InjectModel(Portfolio.name) private readonly portfolioModel: Model<Portfolio>,
     @InjectModel(Message.name) private readonly messageModel: Model<Message>,
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(Projet.name) private readonly projetModel: Model<Projet>,
   ) { }
   async createOrUpdateSite(user: User, data: any): Promise<any> {
     const userId = (user as any)._id ? (user as any)._id.toString() : user.id?.toString();
@@ -322,6 +324,28 @@ export class SiteService {
       const postIds = posts.map(p => p._id);
       messages = await this.messageModel.find({ post: { $in: postIds } }).lean();
     }
+    // 7. Récupérer les services offerts associés au site
+    let services = [];
+    try {
+      if (this.serviceModel) {
+        // Correction : matcher à la fois ObjectId et string
+        services = await this.serviceModel.find({ site: { $in: [site._id, site._id.toString()] } }).lean();
+      }
+    } catch (error) {
+      console.error('[ERROR] Erreur lors de la récupération des services:', error);
+    }
+    let projet = [];
+    try {
+      if (this.projetModel) {
+        // Convertir site._id en string pour éviter les problèmes d'ObjectId
+        const userIdString = user._id.toString();
+        projet = await this.projetModel.find({ 
+          user: { $in: [user._id, userIdString] } 
+        }).lean();
+      }
+    } catch (error) {
+      console.error('[ERROR] Erreur lors de la récupération des projets:', error);
+    }
 
     return {GlobalData: [      site,
       user,
@@ -329,6 +353,8 @@ export class SiteService {
       posts,
       portfolios,
       messages,
+      services,
+      projet
     ]};
   }
 }
