@@ -31,6 +31,7 @@ async function bootstrap() {
         'https://pierre-design.onrender.com',
         'http://127.0.1:5500:3000',
         'https://my-portfolio-vitrine.onrender.com',
+        'https://jimmyrais-portfolio-rbof.onrender.com'
       ];
       
       // En développement, être plus permissif
