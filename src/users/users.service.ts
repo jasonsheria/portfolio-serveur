@@ -115,7 +115,7 @@ export class UsersService {
             const fileName = `profile_${Date.now()}_${Math.floor(Math.random()*10000)}.${ext}`;
             const fs = require('fs');
             const path = require('path');
-            const profileDir = path.join(__dirname, '../../..', 'uploads', 'profile');
+            const profileDir = path.join('/upload', 'profile');
             if (!fs.existsSync(profileDir)) {
                 fs.mkdirSync(profileDir, { recursive: true });
             }
@@ -219,7 +219,7 @@ export class UsersService {
 
         // Gestion des uploads de fichiers
         const username = userToUpdate.username; // Utiliser le username pour le nom du dossier
-        const userUploadDir = path.join(__dirname, '../..', 'uploads','profile');
+        const userUploadDir = path.join('/upload', 'profile');
 
         if (!fs.existsSync(userUploadDir)) {
             fs.mkdirSync(userUploadDir, { recursive: true });

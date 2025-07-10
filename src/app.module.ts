@@ -24,6 +24,7 @@ import { PortfolioModule } from './portfolio/portfolio.module'; // Ajouté pour 
 import { TemplateModule } from './template/template.module';
 import { SuggestionModule } from './suggestion';
 import { ProjetModule } from './projet/projet.module';
+import { UploadController } from './upload/upload.controller';
 
 @Module({
   imports: [
@@ -60,7 +61,7 @@ import { ProjetModule } from './projet/projet.module';
     SuggestionModule,
     ProjetModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, UploadController],
   providers: [AppService],
 })
 export class AppModule {}

@@ -6,6 +6,8 @@ import { Express } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentUser } from './current-user.decorator';
+import { diskStorage } from 'multer';
+import * as path from 'path';
 
 @Controller('users')
 export class UsersController {
@@ -17,11 +19,27 @@ export class UsersController {
   // Route de mise à jour du profil utilisateur (hors email/password)
   @UseGuards(JwtAuthGuard)
   @Put('profile/:id')
-  @UseInterceptors(FileInterceptor('profileFile'))
+  @UseInterceptors(FileInterceptor('profileFile', {
+    storage: diskStorage({
+      destination: (req, file, cb) => {
+        const uploadPath = path.join('/upload', 'profiles');
+        const fs = require('fs');
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+      },
+      filename: (req, file, cb) => {
+        const ext = require('path').extname(file.originalname);
+        const name = require('path').basename(file.originalname, ext);
+        cb(null, `${name}-${Date.now()}${ext}`);
+      },
+    }),
+  }))
   async updateProfile(
     @Param('id') id: string,
     @Body() updateData: any,
-    @UploadedFile() profileFile?: any, // Correction: utiliser 'any' pour éviter l'erreur de type
+    @UploadedFile() profileFile?: any,
     @Req() req?: any
   ) {
     // Sécurité : l'utilisateur ne peut mettre à jour que son propre profil
@@ -30,7 +48,7 @@ export class UsersController {
     }
     // Ajout du fichier uploadé si présent
     if (profileFile) {
-      updateData.profileFile = profileFile;
+      updateData.profileFile = `/uploads/profiles/${profileFile.filename}`;
     }
     return this.usersService.updateUser(id, updateData);
   }

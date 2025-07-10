@@ -16,7 +16,7 @@ export class SiteController {
   @UseInterceptors(FileInterceptor('service_image', {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        const uploadPath = path.join(process.cwd(), 'uploads/services');
+        const uploadPath = path.join('/upload', 'services');
         if (!fs.existsSync(uploadPath)) {
           fs.mkdirSync(uploadPath, { recursive: true });
         }
@@ -46,16 +46,8 @@ export class SiteController {
     
     let finalImagePath = undefined;
     if (file) {
-      // Déplace l'image uploadée dans le bon dossier public/uploads/services/
-      const username = user.email;
-      const destDir = path.join(process.cwd(), 'public', 'uploads', 'services');
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
-      }
-      const srcPath = file.path;
+      // Enregistre l'image uploadée dans /upload/services
       const fileName = path.basename(file.filename);
-      const destPath = path.join(destDir, fileName);
-      fs.copyFileSync(srcPath, destPath);
       finalImagePath = `/uploads/services/${fileName}`;
       body.service_image = finalImagePath;
     }
