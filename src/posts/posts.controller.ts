@@ -32,7 +32,7 @@ export class PostsController {
   @UseInterceptors(
     FilesInterceptor('media', 10, {
       storage: diskStorage({
-        destination: './uploads',
+        destination: '/upload/posts', // <-- persistent disk for posts
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, uniqueSuffix + extname(file.originalname));
@@ -133,7 +133,7 @@ export class PostsController {
   @UseInterceptors( 
     FilesInterceptor('media', 10, {
       storage: diskStorage({
-        destination: './uploads',
+        destination: '/upload/posts', // <-- persistent disk for posts
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           cb(null, uniqueSuffix + extname(file.originalname));

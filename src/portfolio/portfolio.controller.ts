@@ -34,13 +34,7 @@ export class PortfolioController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
-      destination: (req, file, cb) => {
-        const uploadPath = path.join(process.cwd(), 'uploads', 'portfolio');
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-      },
+      destination: '/upload/portfolio', // <-- persistent disk for portfolio uploads
       filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
         const filename = `portfolio_${Date.now()}${ext}`;

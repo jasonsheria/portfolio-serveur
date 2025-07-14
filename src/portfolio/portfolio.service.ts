@@ -30,8 +30,8 @@ export class PortfolioService {
     const portfolio = await this.portfolioModel.findById(id);
     if (!portfolio) throw new NotFoundException('Portfolio non trouvé');
     // Suppression physique du fichier image
-    if (portfolio.imageUrl && portfolio.imageUrl.startsWith('/uploads/')) {
-      const filePath = path.join(process.cwd(), portfolio.imageUrl);
+    if (portfolio.imageUrl && portfolio.imageUrl.startsWith('/uploads/portfolio/')) {
+      const filePath = path.join('/upload/portfolio', path.basename(portfolio.imageUrl));
       try {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
@@ -46,8 +46,9 @@ export class PortfolioService {
   async deleteBySite(siteId: string): Promise<void> {
     const portfolios = await this.portfolioModel.find({ site: siteId });
     for (const p of portfolios) {
-      if (p.imageUrl && p.imageUrl.startsWith('/uploads/')) {
-        try { fs.unlinkSync('.' + p.imageUrl); } catch {}
+      if (p.imageUrl && p.imageUrl.startsWith('/uploads/portfolio/')) {
+        const filePath = path.join('/upload/portfolio', path.basename(p.imageUrl));
+        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
       }
     }
     await this.portfolioModel.deleteMany({ site: siteId });

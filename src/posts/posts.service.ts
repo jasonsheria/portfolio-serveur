@@ -134,7 +134,7 @@ export class PostsService {
           post: post._id,
           user: userId,
           site: siteId, // Associer le site au média aussi
-          url: `/uploads/${file.filename}`,
+          url: `/uploads/posts/${file.filename}`,
           filename: file.filename,
           type: file.mimetype.startsWith('image/') ? 'image' : file.mimetype.startsWith('video/') ? 'video' : 'file',
         });
@@ -289,7 +289,7 @@ export class PostsService {
             post: post._id,
             user: userId, // Assuming userId is the ObjectId of the user
             site: siteId,   // Assuming siteId is the ObjectId of the site
-            url: `/uploads/${file.filename}`,
+            url: `/uploads/posts/${file.filename}`,
             filename: file.filename,
             type: file.mimetype.startsWith('image/')
               ? 'image'
@@ -338,7 +338,7 @@ export class PostsService {
         if (media) {
           // Suppression physique du fichier
           if (media.filename) {
-            const filePath = path.join(process.cwd(), 'uploads', media.filename);
+            const filePath = path.join('/upload', 'posts', media.filename);
             try { fs.unlinkSync(filePath); } catch (err) { /* ignore */ }
           }
           await this.mediaModel.findByIdAndDelete(mediaId);
