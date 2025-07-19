@@ -23,7 +23,7 @@ import { CommentsModule } from './comments/comments.module';
 import { PortfolioModule } from './portfolio/portfolio.module'; // Ajouté pour exposer les routes portfolio
 import { TemplateModule } from './template/template.module';
 import { SuggestionModule } from './suggestion';
-import { ProjetModule } from './projet/projet.module';
+import { ProjetModule } from './project/project.module'; // Importer ProjetModule
 import { UploadController } from './upload/upload.controller';
 
 @Module({
@@ -59,7 +59,7 @@ import { UploadController } from './upload/upload.controller';
     PortfolioModule, // Ajouté ici pour activer les routes portfolio
     TemplateModule, // Ajouté pour activer les routes template
     SuggestionModule,
-    ProjetModule,
+    ProjetModule, // Ajouté ici pour activer les routes projet
   ],
   controllers: [AppController, UploadController],
   providers: [AppService],

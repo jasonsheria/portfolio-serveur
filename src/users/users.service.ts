@@ -19,6 +19,8 @@ import * as path from 'path'; // Import path
 import { Payment } from '../entity/payment/payment.schema';
 import * as bcrypt from 'bcrypt';
 import type { Express } from 'express';
+import { removeBackground } from '../common/remove-bg.util';
+import * as FormData from 'form-data';
 
 @Injectable()
 export class UsersService {
@@ -241,8 +243,20 @@ export class UsersService {
                 const filePath = path.join(userUploadDir, fileName);
 
                 try {
-                    await fs.promises.writeFile(filePath, file.buffer);
-                    // Correction ici : si entityFieldOverride est défini, on met à jour ce champ dans le user, sinon le champ du DTO
+                    let finalBuffer = file.buffer;
+                    // Suppression du fond pour les images de profil
+                    if (fileField === 'profileImage1' || fileField === 'profileImage2' || fileField === 'profileImage3') {
+                        const apiKey = process.env.REMOVE_BG_API_KEY;
+                        if (apiKey) {
+                          try {
+                            finalBuffer = await removeBackground(file.buffer, apiKey);
+                          } catch (err) {
+                            this.logger.error(`remove.bg failed for ${fileField}: ${err.message}`);
+                            // fallback: garder l'image originale
+                          }
+                        }
+                    }
+                    await fs.promises.writeFile(filePath, finalBuffer);
                     if (entityFieldOverride) {
                         (userToUpdate as any)[entityFieldOverride] = `/uploads/profile/${fileName}`;
                     } else {
