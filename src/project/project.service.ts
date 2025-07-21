@@ -10,23 +10,24 @@ export class ProjectService {
   ) {}
 
   async findAllByUser(userId: string) {
-    return this.projectModel.find({ user: new Types.ObjectId(userId) }).sort({ createdAt: -1 }).exec();
+    console.log(userId);
+    return this.projectModel.find({ user: userId }).sort({ createdAt: -1 }).exec();
   }
 
   async create(userId: string, dto: any) {
-    const project = new this.projectModel({ ...dto, user: new Types.ObjectId(userId) });
+    const project = new this.projectModel({ ...dto, user: userId });
     return project.save();
   }
 
   async update(userId: string, projectId: string, dto: any) {
-    const project = await this.projectModel.findOne({ _id: projectId, user: new Types.ObjectId(userId) });
+    const project = await this.projectModel.findOne({ _id: projectId, user: userId });
     if (!project) throw new NotFoundException('Projet non trouvé');
     Object.assign(project, dto);
     return project.save();
   }
 
   async delete(userId: string, projectId: string) {
-    const project = await this.projectModel.findOne({ _id: projectId, user: new Types.ObjectId(userId) });
+    const project = await this.projectModel.findOne({ _id: projectId, user: userId });
     if (!project) throw new NotFoundException('Projet non trouvé');
     await project.deleteOne();
     return { deleted: true };

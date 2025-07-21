@@ -23,9 +23,11 @@ import { CommentsModule } from './comments/comments.module';
 import { PortfolioModule } from './portfolio/portfolio.module'; // Ajouté pour exposer les routes portfolio
 import { TemplateModule } from './template/template.module';
 import { SuggestionModule } from './suggestion';
-import { ProjetModule } from './project/project.module'; // Importer ProjetModule
+import { ProjectModule } from './project/project.module'; // Importer ProjectModule
+import { ProjetModule } from './projet/projet.module'; // Importer ProjetModule
 import { UploadController } from './upload/upload.controller';
-
+import { VisitModule } from './visit/visit.module'; // Ajout du module de tracking visite
+import { ServiceModule } from './service/service.module'; // Importer le module de service
 @Module({
   imports: [
       // Charger le module de configuration en premier.
@@ -59,7 +61,10 @@ import { UploadController } from './upload/upload.controller';
     PortfolioModule, // Ajouté ici pour activer les routes portfolio
     TemplateModule, // Ajouté pour activer les routes template
     SuggestionModule,
+    ProjectModule, // Ajouté ici pour activer les routes projet
     ProjetModule, // Ajouté ici pour activer les routes projet
+    VisitModule, // Ajouté ici pour activer le tracking des visites
+    ServiceModule, // Ajouté pour activer les routes de service
   ],
   controllers: [AppController, UploadController],
   providers: [AppService],

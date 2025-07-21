@@ -12,12 +12,14 @@ export class ServiceService {
   async createServices(user: any, services: any[]): Promise<any[]> {
     if (!services || !Array.isArray(services)) return [];
     const userId = (user as any)._id ? (user as any)._id.toString() : user.id;
-    const docs = services.map(s => ({ ...s, user: userId }));
+    const docs = services.map(s => ({ ...s, site: userId }));
     return this.serviceModel.insertMany(docs);
   }
 
   async getServicesByUser(userId: string): Promise<OfferedService[]> {
-    return this.serviceModel.find({ user: userId });
+    const dat = this.serviceModel.find({ site: userId }).sort({ createdAt: -1 }).exec();
+    console.log(dat)
+    return dat
   }
 
   async getServiceById(serviceId: string): Promise<OfferedService | null> {
