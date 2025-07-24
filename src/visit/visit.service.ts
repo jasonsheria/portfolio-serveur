@@ -11,6 +11,11 @@ export class VisitService {
   ) {}
 
   async trackVisit(ip: string, siteId: string) {
+    const find = await this.visitModel.findOne({ ip, template: new Types.ObjectId(siteId), date: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }).exec();
+    if (find) {
+    //   console.log('[VISIT] Visite déjà enregistrée pour l\'IP', ip, 'et le site', siteId);
+      return find; // Si la visite existe déjà, on la retourne
+    }
     return this.visitModel.create({ ip, template: new Types.ObjectId(siteId), date: new Date() });
   }
 
